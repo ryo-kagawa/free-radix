@@ -6,21 +6,43 @@ const RADIX64 = [
 ];
 const TARGET_RADIX_LENGTH = 36;
 
-const calc = (number, radix) => {
-  const remainder = number % radix;
-  const value = (number - remainder) / radix;
-  return {
-    value,
-    remainder
+const calcBitShiftCount = (radix) => {
+  let bitShiftCount = 0;
+  let powerOfTwoNumber = 1;
+  while(radix > powerOfTwoNumber) {
+    powerOfTwoNumber <<= 1;
+    bitShiftCount++;
   }
+  return bitShiftCount;
 }
 
 const radix10ToFreeRadix = (targetNumber, outputRadix, outputRadixStringList) => {
+  const powerOfTwoCalc = (number, radix, bitShift) => {
+    const remainder = number & (radix - 1);
+    const value = (number - remainder) >> bitShift;
+    return {
+      value,
+      remainder
+    }
+  }
+
+  const calc = (number, radix) => {
+    const remainder = number % radix;
+    const value = (number - remainder) / radix;
+    return {
+      value,
+      remainder
+    }
+  }
+
   outputRadixStringList = outputRadixStringList || RADIX64;
   let value = Number(targetNumber);
+  const isPowerOfTwo = !(outputRadix & (outputRadix - 1));
+  const calcMethod = isPowerOfTwo ? powerOfTwoCalc : calc;
+  const bitShiftCount = isPowerOfTwo && calcBitShiftCount(outputRadix);
   let ret = [];
   while(outputRadix < value) {
-    const temp = calc(value, outputRadix);
+    const temp = calcMethod(value, outputRadix, bitShiftCount);
     value = temp.value;
     ret.push(outputRadixStringList[temp.remainder]);
   }
@@ -38,11 +60,14 @@ const freeRadixToRadix10 = (targetNumber, inputRadix, inputRadixStringList) => {
     targetNumber = targetNumber.toLocaleLowerCase("en-US");
   }
   inputRadixStringList = inputRadixStringList || RADIX64;
+  const isPowerOfTwo = !(inputRadix & (inputRadix - 1));
+  const bitShiftCount = isPowerOfTwo && calcBitShiftCount(inputRadix);
   let value = 0;
   for(let i=0,len=targetNumber.length; i<len; i++) {
-    targetRadix10 = inputRadixStringList.indexOf(targetNumber[i]);
+    const targetRadix10 = inputRadixStringList.indexOf(targetNumber[i]);
     if(i !== targetNumber.length-1) {
-      value = (value + targetRadix10) * inputRadix;
+      const temp = value + targetRadix10;
+      value = isPowerOfTwo ? temp << bitShiftCount : temp * inputRadix;
     } else {
       value += targetRadix10;
     }
